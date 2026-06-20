@@ -225,19 +225,72 @@ export default function App() {
     return 5;
   };
 
+  const generateWordDoc = (data: FormData, questions: CustomQuestion[]) => {
+    const label = (key: string) => {
+      const m: Record<string, string> = {
+        hotelName: 'Hotel Name', email: 'Email', contactNumber: 'Contact Number',
+        location: 'Location', currentSoftware: 'Current Software',
+        biggestProblem: 'Biggest Problem', advancedFeatures: 'Advanced Features',
+        paymentStructure: 'Payment Structure', currentPayment: 'Current Payment',
+        paymentModel: 'Payment Model', migrationWillingness: 'Migration Willingness (1-5)',
+        otaPercentage: 'OTA %', hasWebsite: 'Has Website',
+        mobileAppImportance: 'Mobile App Importance (1-5)',
+        seasonalPricingDifficulty: 'Seasonal Pricing Difficulty',
+        multipleProperties: 'Multiple Properties',
+        overbookingFrequency: 'Overbooking Frequency',
+        automatedMessages: 'Automated Messages',
+        extraServicesUpsell: 'Extra Services Upsell',
+        hasHotelManagementSystem: 'Has HMS',
+        hotelManagementSystemName: 'HMS Name',
+        whyNotUsingHMS: 'Why Not Using HMS',
+        wouldUseCustomHMS: 'Would Use Custom HMS',
+        hmsRequirements: 'HMS Requirements',
+        hmsMaxBudget: 'HMS Max Budget',
+      };
+      return m[key] || key;
+    };
+
+    const rows: string[] = [];
+    for (const [k, v] of Object.entries(data)) {
+      if (k === 'customAnswers') continue;
+      if (!v || (Array.isArray(v) && v.length === 0)) continue;
+      const val = Array.isArray(v) ? v.join(', ') : String(v);
+      rows.push(`<tr><td style="border:1px solid #333;padding:6px 10px;font-weight:600">${label(k)}</td><td style="border:1px solid #333;padding:6px 10px">${val}</td></tr>`);
+    }
+    for (const q of questions) {
+      const answer = data.customAnswers?.[q.id] || '(no answer)';
+      rows.push(`<tr><td style="border:1px solid #333;padding:6px 10px;font-weight:600">[Custom] ${q.title}</td><td style="border:1px solid #333;padding:6px 10px">${answer}</td></tr>`);
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Survey Response</title></head><body style="font-family:'Segoe UI',Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px">
+      <h1 style="color:#1e3a8a;border-bottom:3px solid #1e3a8a;padding-bottom:10px">Hotel Booking System — Survey Response</h1>
+      <p style="color:#666">Submitted: ${new Date().toLocaleString()}</p>
+      <table style="border-collapse:collapse;width:100%;margin-top:20px">${rows.join('')}</table></body></html>`;
+
+    const blob = new Blob([html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `survey-response-${Date.now()}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = { ...formData, customQuestions };
     try {
-      const payload = { ...formData, customQuestions };
-      const res = await fetch('/api/surveys', {
+      await fetch('/api/surveys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Failed to submit');
-    } catch (err) {
-      console.error('Submit failed:', err);
+    } catch {
+      // backend optional — save locally and generate Word doc either way
     }
+    generateWordDoc(formData, customQuestions);
     setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
