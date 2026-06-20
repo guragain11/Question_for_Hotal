@@ -1,3 +1,4 @@
+import path from 'path';
 import express, { Request, Response } from 'express';
 import pkg from 'pg';
 import dotenv from 'dotenv';
@@ -10,6 +11,10 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(express.json());
+
+// Serve built SPA in production
+const distPath = path.resolve(import.meta.dirname, 'dist');
+app.use(express.static(distPath));
 
 // PostgreSQL Pool
 const pool = new Pool({
@@ -136,6 +141,12 @@ app.get('/api/surveys/export/csv', adminAuth, async (req: Request, res: Response
     console.error(error);
     res.status(500).json({ error: 'Failed to export surveys' });
   }
+});
+
+// SPA fallback: serve index.html for all non-API routes (e.g., /admin)
+app.get('*', (req: Request, res: Response) => {
+  if (req.path.startsWith('/api')) return;
+  res.sendFile(path.resolve(distPath, 'index.html'));
 });
 
 app.listen(port, () => {
